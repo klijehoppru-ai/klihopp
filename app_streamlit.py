@@ -4,10 +4,11 @@ import re
 
 st.set_page_config(page_title="Анализ PDF", layout="wide")
 
-def extract_text_from_pdf(file):
+def extract_text_from_pdf(file, progress_bar):
     """Извлекает текст и структуру страниц из PDF"""
     pages_data = []
     with pdfplumber.open(file) as pdf:
+        total_pages = len(pdf.pages)
         for i, page in enumerate(pdf.pages):
             text = page.extract_text() or ""
             tables = page.extract_tables()
@@ -16,6 +17,8 @@ def extract_text_from_pdf(file):
                 "text": text,
                 "tables": tables
             })
+            # Обновляем прогресс бар
+            progress_bar.progress((i + 1) / total_pages, text=f"Обработка страницы {i + 1} из {total_pages}")
     return pages_data
 
 def find_keywords(pages_data):
@@ -131,14 +134,19 @@ st.markdown("""
 uploaded_file = st.file_uploader("Загрузите PDF файл", type="pdf")
 
 if uploaded_file is not None:
+    # Создаем прогресс бар
+    progress_bar = st.progress(0)
     with st.spinner("Обработка файла..."):
-        pages_data = extract_text_from_pdf(uploaded_file)
+        pages_data = extract_text_from_pdf(uploaded_file, progress_bar)
         
         # Поиск ключевых слов и резьб
         keyword_results = find_keywords(pages_data)
         
         # Поиск деталей
         part_results = find_part_numbers(pages_data)
+        
+        # Заполняем прогресс бар до 100%
+        progress_bar.progress(1.0, text="Готово!")
         
         st.success(f"Файл обработан! Страниц: {len(pages_data)}")
         
